@@ -5,4 +5,4 @@
 
 ## This is the course Introduction to Computer System for the Spring Semester of 2024 at Xi'an Jiaotong University
 - You can click [here](https://ics.dfshan.net/) to access the course homepage
-- This course is lead by Professor [Danfeng Shan](https://dfshan.github.io/) and [Hao Li](https://aquatoney.github.io/)
+- This course is lead by Prof. [Danfeng Shan](https://dfshan.github.io/) and Prof. [Hao Li](https://aquatoney.github.io/)
