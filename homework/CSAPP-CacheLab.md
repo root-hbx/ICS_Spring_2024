@@ -4,7 +4,7 @@
 
 ## 我的答案
 
-### cache simulator
+### cache simulator:
 
 ```c
 #include <stdio.h>
