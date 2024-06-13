@@ -391,3 +391,145 @@ Situation here:
 
 ## Virtual Memory
 
+### Basic Design: System Using Virtual Addressing
+
+![](./image/21.png)
+
+>Used in all modern servers, laptops, and smart phones
+
+1. 在进程中看到的所有地址都是虚拟地址
+2. 通过CPU内的MMU将虚拟地址转化为物理地址，然后访问
+3. DRAM：虚拟内存系统缓存，在主存中缓存虚拟页
+
+### Page Table
+
+Def: A page table is an array of page table entries (PTEs) that maps virtual pages to physical pages.
+
+![](./image/22.png)
+
+### Address Translation With a Page Table
+
+![alt text](./image/23.png)
+
+### Basic Address Translation
+
+__Page Hit__
+
+Def: reference to VM word that is in physical memory (DRAM cache hit, just __fetch in Memory__)
+
+![alt text](./image/24.png)
+
+![](./image/25.png)
+
+__Page Fault__
+
+Def: reference to VM word that is not in physical memory (DRAM cache miss, hence need to __fetch in Disk__)
+
+![alt text](./image/26.png)
+
+![](./image/27.png)
+
+Traits:
+
+1. Page miss causes page fault (an exception)
+2. Page fault handler selects a victim to be evicted (here VP 4)
+3. Offending instruction is restarted: page hit!
+
+PS:
+> It's a little confusing for a beginner about the process above
+
+1. Structure: CPU -> MMU -> Cache (L1, we ignore others) -> Disk 
+2. CPU give __VA__ to MMU to switching for PA, so that it can visit this place
+3. CPU -> \[VA\] -> MMU, MMU is seeking for PTE, and it asks Cache now (by sending __PTEA__)
+4. Namely, MMU -> \[PTEA\] -> Cache
+4. As is introduced above, PT is stored either in Cache (most) or in Disk (less)
+5. If __PTE__ is stored in Cache, Cache returns PTE to MMU,...
+6. Else, PTE is stored in disk, will trigger "Page Fault Exception"
+7. And Page fault handler is working now! It will choose a __Victim Page__ in Cache and fetch the correct __New Page__ from Disk to Cache(like the processing in Chapter6 Memory Hierarchy)
+8. And the process "VA -> PA" restarts
+
+__Integrating VM and Cache__
+
+![alt text](./image/28.png)
+
+### Speeding up Translation with a TLB
+
+Translation Lookaside Buffer (TLB)
+
+>- Small set-associative hardware cache in MMU 
+>- Maps virtual page numbers to physical page numbers 
+>- Contains complete page table entries for small number of pages
+
+__TLB Hit__
+
+![](./image/29.png)
+
+A TLB hit eliminates a memory access (that's exactly what we want!)
+
+__TLB Miss__
+
+![](./image/30.png)
+
+A TLB miss incurs an additional memory access (the PTE)
+>If TLB miss, we will access Memory like before, but we return PTE to "TLB->MMU" instead of MMU
+
+In fact, _TLB misses are rare_, for Page is very big in real computing world!
+
+### Translating with a k-level Page Table
+
+>This part is "out-of-scale"
+
+![](./image/31.png)
+
+```python
+for i in range(1, k):
+    VPN i in "Level(i) page table" just stores the beginning of "Level(i+1) page table"
+    # It's just an index
+
+if i == k:
+    It stores PPN # !!!
+
+# So: PageTable(k) is longer than PageTable(1~k-1)
+```
+
+### Actual Process (Very Important)
+
+Components of the virtual address (VA)
+
+- TLBI: TLB index 
+- TLBT: TLB tag 
+- VPO: Virtual page offset 
+- VPN: Virtual page number
+
+Components of the physical address (PA)
+
+- PPO: Physical page offset (same as VPO) 
+- PPN: Physical page number
+
+__Example 1__
+
+![alt text](./image/32.png)
+
+![alt text](./image/33.png)
+
+![alt text](./image/34.png)
+
+![alt text](./image/35.png)
+
+
+__Example 2__
+
+![alt text](./image/36.png)
+
+本质上，这个过程很简单：
+
+1. 我现在拿到一个虚拟内存地址(VA)
+2. 我把它按照VPN与VPO切割开，VPO直接copy对照到PPO
+3. 现在问题是如何获取VPN（假设全部cache hit）
+    1. 将VPN分割成：TLBT与TLBI
+    2. TLBI作为Set索引，获取“在哪一组”信息
+    3. TLBT作为组内的Line索引，获取当前“在哪一行”信息
+    4. 如果找到的这一行的ValidBit=1，说明有效，即：命中
+    5. 获取这一行对应的PPN
+4. 将上述的PPN和PPO拼接结合，即可得到PA
+
