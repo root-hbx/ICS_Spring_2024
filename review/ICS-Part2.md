@@ -1,3 +1,4 @@
+# ICS Part2
 
 >This list only contains "in-scope" knowledges
 
@@ -160,6 +161,7 @@ Principle:
 - How Linker Resolves Duplicate Symbol Definitions
 - Linker’s Symbol Rules
 
+### Symbol Table
 
 - [x] Symbol Resolution(符号解析)：找到不同文件中定义的符号的地址
 
@@ -205,6 +207,7 @@ PS: 这里foo是static int函数，由于是函数定义，所以会进符号表
 >1. 全局变量的定义
 >2. 函数定义
 
+### Symbol Rules
 
 - [x] How Linker Resolves Duplicate Symbol Definitions
 
@@ -279,4 +282,112 @@ Process: fork函数原理 (完全复制执行状态 → 指定谁父谁子 → �
 ![](./image/15.png)
 
 ![](./image/16.png)
+
+
+## Exceptional Control Flow
+
+- Basic Concepts
+- Signal Concepts: Sending a Signal
+- Receiving Signals
+
+### ECF concepts
+
+- [x] Basic Concepts
+
+1. An exception is a transfer of control to the OS kernel in response to some event (i.e., change in processor state)
+2. Kernel is the memory-resident part of the OS
+3. Examples of events: Divide by 0, arithmetic overflow, page fault, I/O request completes, typing Ctrl-C
+
+__Exception Tables__
+
+1. Each type of event has a unique exception number k
+2. Handler k is called each time exception k occurs
+
+![](./image/17.png)
+
+- [x] Signal Concepts: Sending a Signal
+
+Def:
+
+A signal is a small message that notifies a process that an event of some type has occurred in the system
+
+Trait:
+
+1. Sent from the kernel (sometimes at the request of another process) to a process
+2. Signal type is identified by small integer ID’s (1-30)
+
+>PS: Only information in a signal is its ID and the fact that it arrived
+
+### What's Happening when Receiving Signals
+
+- [x] Receiving Signals
+
+Some possible reaction:
+
+![](./image/18.png)
+
+![](./image/19.png)
+
+信号的接收：异步
+
+- 在进程q进行的时候，发送信号 
+- 在context switch的时候，检测kernel：有信号进入进程q就处理，没有信号就回来
+
+
+__Pending and Blocked Signals__
+
+A signal is pending if sent but not yet received
+
+- There can be __at most one pending signal of each type__
+- Important: __Signals are not queued (in pendingTable)__
+    - If a process has a _pending_ signal of type k, then _subsequent signals of type k_ that _are sent to that process_ are discarded
+
+```bash
+pending: represents the set of pending signals 
+- Kernel sets bit k in pending when a signal of type k is sent 
+- Kernel clears bit k in pending when a signal of type k is received
+```
+
+A process can block the receipt of certain signals
+
+- Blocked signals can be sent, but __will not be received until the signal is unblocked__
+- Some signals cannot be blocked (SIGKILL, SIGSTOP) or can only be blocked when sent by other processes (SIGSEGV, SIGILL, etc)
+
+```bash
+blocked: represents the set of blocked signals 
+- Can be set and cleared by using the sigprocmask function
+```
+
+A pending signal is received at most once
+
+- [x] A typical example (Significant!!!)
+
+![alt text](./image/20.png)
+
+Situation here:
+
+1. A is sending a signal to C
+2. Then B wanna send C a signal as well
+3. Guess what will C do ?
+
+>It's important to understand why we introduce "Pending for A Process" and "Blocked for A Process"
+
+1. A wanna send a signal to C, C is working on its own items:
+    1. __"Pending for C" is 1__ now, which implys A has a signal to send for C
+    2. Since C is "resting" now (No Blocked for C), C will handle "Singnal from A" then
+    3. But C is doing its own items now, it may not good to be interupted
+    4. In another word, C will handle it as soon as it finishes current items
+    5. Hence: __"Blocked for C" is set to 1__
+    6. It means, C said: "I will handle A's signal as soon as I finish my work now, and the next period is just for 'A's signal', nobody can come into processing queue in that duration"
+2. B wanna send a signal to C, C is working on its own items:
+    1. Since C hasn't process A's item, both "Pending for C" and "Blocked for C" are 1
+    2. "Signals are not queued (in pendingTable)"
+    3. the message "Pending for C (from B)" will __be discarded at once__ since there can be at most one pending signal of each type.
+3. When C is finished, it is coming for A's signal:
+    1. Since C is finished, __"Blocked for C" is set back to 0__
+    2. And it is receiving message from A now
+    3. Since A's signal is received, __"Pending for C (from A)" returns to 0__ now
+
+
+## Virtual Memory
 
